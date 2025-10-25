@@ -2,6 +2,48 @@
 // - STT/TTS 기능 지원 여부 감지
 // - Web Speech API 인식기 생성 팩토리
 // - 음성 합성 실행/중지 헬퍼
+
+// Web Speech API 타입 정의
+interface SpeechRecognition extends EventTarget {
+  start(): void;
+  stop(): void;
+  abort(): void;
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
 export type SpeechSupport = {
   sttSupported: boolean;
   ttsSupported: boolean;

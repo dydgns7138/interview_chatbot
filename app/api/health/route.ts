@@ -2,7 +2,7 @@
 import { NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env['OPENAI_API_KEY'];
   
   if (!apiKey) {
     return new Response(

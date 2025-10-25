@@ -12,6 +12,30 @@ import { Stepper } from "@/components/ui/Stepper";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Web Speech API 타입 정의
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
 type Step = {
   key: "name" | "gender" | "age" | "address" | "desiredJob" | "strengths" | "weaknesses";
   title: string;
@@ -68,8 +92,8 @@ export default function OnboardingPage() {
       // 최종 결과만 반영하여 중복 누적을 방지한다
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const res = event.results[i];
-        if (!res.isFinal) continue;
-        const transcript = res[0].transcript.trim();
+        if (!res || !res.isFinal) continue;
+        const transcript = res[0]?.transcript?.trim();
         if (transcript) setValue((prev) => (prev ? prev + " " : "") + transcript);
       }
     };
@@ -86,6 +110,8 @@ export default function OnboardingPage() {
     if (isTransitioning) return; // 애니메이션 중에는 버튼 클릭 무시
     
     setIsTransitioning(true);
+    
+    if (!current) return;
     
     const key = current.key;
     let payload: any = {};
@@ -107,6 +133,10 @@ export default function OnboardingPage() {
     } else {
       router.push("/jobs");
     }
+  }
+
+  if (!current) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -136,7 +166,7 @@ export default function OnboardingPage() {
               {current.input === "textarea" ? (
                 <Textarea
                   aria-label={current.title}
-                  ref={(el) => (inputRef.current = el)}
+                  ref={(el) => { inputRef.current = el; }}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   placeholder={current.title}
@@ -145,7 +175,7 @@ export default function OnboardingPage() {
                 <Input
                   aria-label={current.title}
                   type={current.input === "number" ? "number" : "text"}
-                  ref={(el) => (inputRef.current = el)}
+                  ref={(el) => { inputRef.current = el; }}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   placeholder={current.title}

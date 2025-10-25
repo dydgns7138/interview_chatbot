@@ -15,7 +15,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env['OPENAI_API_KEY'];
   if (!apiKey) {
     return new Response("OPENAI_API_KEY missing", { status: 500 });
   }

@@ -4,6 +4,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mic, Square, Send } from "lucide-react";
 
+// Web Speech API 타입 정의
+interface SpeechRecognition extends EventTarget {
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
 type Props = {
   value: string;
   onChange: (v: string) => void;
@@ -27,8 +65,8 @@ export function UserInput({ value, onChange, onSend, createRecognition }: Props)
     rec.onresult = (e: SpeechRecognitionEvent) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (!r.isFinal) continue;
-        const t = r[0].transcript.trim();
+        if (!r || !r.isFinal) continue;
+        const t = r[0]?.transcript?.trim();
         if (t) onChange(value ? value + " " + t : t);
       }
     };
