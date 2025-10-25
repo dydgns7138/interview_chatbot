@@ -1,0 +1,50 @@
+/* 전역 스타일시트
+   - Tailwind base/components/utilities 레이어
+   - CSS 변수 (예: radius)
+   - 전체 높이 레이아웃과 접근성 포커스 아웃라인 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.5rem;
+}
+
+html, body, #__next {
+  height: 100%;
+}
+
+/* Accessible focus */
+:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Utilities for cards and bubbles */
+.card {
+  border-radius: 1rem; /* rounded-2xl */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  border: 1px solid rgb(226 232 240);
+}
+
+.bubble {
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  border: 1px solid rgb(226 232 240);
+  background: #fff;
+}
+.bubble-assistant { background: #eef2ff; border-color: #e0e7ff; }
+.bubble-user { background: #ecfdf5; border-color: #d1fae5; }
+
+/* 타이핑 커서 애니메이션 */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s infinite;
+}
+
+

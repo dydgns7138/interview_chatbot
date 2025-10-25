@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" role="img" aria-label="면접관">
+  <rect width="200" height="120" fill="#f3f4f6" />
+  <circle cx="100" cy="40" r="20" fill="#9ca3af" />
+  <rect x="50" y="70" width="100" height="30" fill="#6b7280" rx="6" />
+  <rect x="30" y="100" width="140" height="10" fill="#374151" />
+</svg>
+
+
