@@ -8,7 +8,7 @@ import { saveProfile } from "@/lib/state/profile";
 import { ko } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { Mic, Square } from "lucide-react";
-import { Stepper } from "@/components/ui/Stepper";
+// import { Stepper } from "@/components/ui/Stepper"; // REMOVED - duplicate with top navigation
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -141,9 +141,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
-      <div className="mb-8">
+      {/* <div className="mb-8">
         <Stepper current="onboarding" />
-      </div>
+      </div> */}
       <section className="mb-8 rounded-2xl bg-gradient-to-b from-indigo-50 to-white p-6 shadow-sm ring-1 ring-slate-200 dark:from-slate-800 dark:to-slate-900 dark:ring-slate-800">
         <h1 className="mb-2 text-2xl font-semibold text-slate-800 dark:text-slate-100">기본 정보</h1>
         <p className="text-sm text-slate-600 dark:text-slate-300">질문에 차근차근 답해주세요. 음성 입력도 사용할 수 있어요.</p>

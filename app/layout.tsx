@@ -6,11 +6,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { VoiceProvider } from "@/lib/state/voice-context";
-import { Header } from "@/components/header";
 import { TopNav } from "@/components/Layout/TopNav";
 
 export const metadata: Metadata = {
-  title: "면접 코치",
+  title: "면접 시뮬레이터",
   description: "GPT 기반 면접 교육 웹 앱",
 };
 
@@ -24,7 +23,6 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground">
         <VoiceProvider>
           <TopNav />
-          <Header />
           <main className="mx-auto max-w-4xl px-4 pb-24 pt-6">{children}</main>
         </VoiceProvider>
       </body>

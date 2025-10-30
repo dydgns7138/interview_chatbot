@@ -1,6 +1,6 @@
 // 한국어 i18n 딕셔너리 및 UI 문자열 모음
 export const ko = {
-  appTitle: "면접 코치",
+  appTitle: "면접 시뮬레이터",
   globalVoiceOn: "음성 출력 켜짐",
   globalVoiceOff: "음성 출력 꺼짐",
   next: "다음",
