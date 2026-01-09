@@ -5,7 +5,13 @@
 // - 환경 변수: OPENAI_API_KEY 필요
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { JOB_INTERVIEW_PROMPTS } from "@/lib/job-interview-prompts";
+import { JobId, DEFAULT_JOB, INTERVIEWER_PROMPTS } from "@/lib/prompts/interviewers";
+
+// JobId 타입 가드
+function isJobId(value: string | null | undefined): value is JobId {
+  if (!value) return false;
+  return Object.keys(INTERVIEWER_PROMPTS).includes(value);
+}
 
 export const runtime = "edge";
 
@@ -71,32 +77,14 @@ export async function POST(req: NextRequest) {
   }
 
   // 직무별 시스템 프롬프트 선택
-  const jobId = body.jobId as keyof typeof JOB_INTERVIEW_PROMPTS;
-  const jobPrompt = jobId && JOB_INTERVIEW_PROMPTS[jobId] 
-    ? JOB_INTERVIEW_PROMPTS[jobId].systemPrompt 
-    : `당신은 전문적인 면접관이자 코치입니다. 다음과 같은 역할을 수행합니다:
+  const rawJobId = body.jobId;
+  const jobId: JobId = isJobId(rawJobId) ? rawJobId : DEFAULT_JOB;
+  const systemPrompt = INTERVIEWER_PROMPTS[jobId];
 
-1. 면접 진행자 역할:
-   - 자연스럽고 친근한 한국어로 면접을 진행합니다
-   - 지원자의 답변에 대해 적절한 후속 질문을 합니다
-   - 면접 상황에 맞는 질문을 순차적으로 제시합니다
-
-2. 피드백 제공자 역할:
-   - 지원자의 답변에 대해 구체적이고 건설적인 피드백을 제공합니다
-   - 강점을 인정하고 개선점을 제안합니다
-   - 면접 스킬 향상을 위한 조언을 제공합니다
-
-3. 면접 유형별 대응:
-   - 기술 면접, 인성 면접, 상황 면접 등 다양한 유형에 대응
-   - 지원자의 경험과 배경에 맞는 질문을 제시
-   - 면접관의 관점에서 실무적인 질문을 합니다
-
-4. 언어 설정:
-   - 지원자가 영어로 질문하거나 답변해도 반드시 한국어로만 응답합니다
-   - 모든 대화는 한국어로 진행됩니다
-   - 영어 입력에 대해서도 한국어로 답변하세요
-
-답변은 친근하면서도 전문적이며, 지원자가 성장할 수 있도록 격려와 조언을 균형있게 제공하세요.`;
+  // 개발 환경에서만 jobId 로그 출력
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[Interview API] jobId: ${jobId}${rawJobId !== jobId ? ` (fallback from: ${rawJobId})` : ""}`);
+  }
 
   let resp: Response;
   try {
@@ -110,7 +98,7 @@ export async function POST(req: NextRequest) {
         model: "gpt-4o-mini",
         stream: true,
         messages: [
-          { role: "system", content: jobPrompt },
+          { role: "system", content: systemPrompt },
           { role: "user", content: body.message },
         ],
         max_tokens: 1000, // 토큰 제한으로 비용 관리
