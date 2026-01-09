@@ -122,17 +122,22 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const reader = resp.body!.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder("utf-8", { fatal: false });
       let tokenCount = 0;
       const MAX_TOKENS = 1000; // 안전장치
+      let buffer = "";
       
       try {
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
           
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+          // UTF-8 안전 디코딩
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          
+          // 마지막 줄은 완전하지 않을 수 있으므로 버퍼에 보관
+          buffer = lines.pop() || "";
           
           for (const line of lines) {
             const trimmed = line.trim();
@@ -155,11 +160,31 @@ export async function POST(req: NextRequest) {
                   controller.close();
                   return;
                 }
+                // UTF-8 인코딩으로 안전하게 전송
                 controller.enqueue(new TextEncoder().encode(token));
               }
             } catch (parseError) {
               console.error('JSON parse error:', parseError);
               // 개별 토큰 파싱 실패는 무시하고 계속 진행
+            }
+          }
+        }
+        
+        // 남은 버퍼 처리
+        if (buffer.trim()) {
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith("data:")) {
+            const data = trimmed.replace(/^data:\s*/, "");
+            if (data !== "[DONE]") {
+              try {
+                const json = JSON.parse(data);
+                const token: string | undefined = json.choices?.[0]?.delta?.content;
+                if (token) {
+                  controller.enqueue(new TextEncoder().encode(token));
+                }
+              } catch (e) {
+                // 무시
+              }
             }
           }
         }

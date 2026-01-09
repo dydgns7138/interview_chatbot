@@ -173,19 +173,39 @@ export default function ChatPage() {
       }
       
       const reader = res.body.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder("utf-8", { fatal: false });
       let assistant = "";
       
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        
+        // UTF-8 안전 디코딩 (멀티바이트 문자 보호)
         const chunk = decoder.decode(value, { stream: true });
         assistant += chunk;
       }
       
-      // Show new interviewer message immediately
-      showInterviewerMessage(assistant);
-      playInterviewTTS(assistant);
+      // 최종 디코딩 완료 (남은 버퍼 처리)
+      const finalChunk = decoder.decode();
+      if (finalChunk) {
+        assistant += finalChunk;
+      }
+      
+      // 화면 표시용 텍스트 (원본 그대로 사용)
+      const displayText = assistant.trim();
+      // TTS용 텍스트 (화면과 동일, 필요시 별도 전처리 가능)
+      const ttsText = displayText;
+      
+      // 디버깅: API 응답 확인 (프로덕션에서도 길이 확인 가능)
+      console.log("[ChatPage] API Response received, length:", displayText.length);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[ChatPage] API Response preview:", displayText.substring(0, 150) + (displayText.length > 150 ? "..." : ""));
+      }
+      
+      // Show new interviewer message immediately (화면 표시용 - 원본 텍스트)
+      showInterviewerMessage(displayText);
+      // TTS 재생 (별도 텍스트 사용)
+      playInterviewTTS(ttsText);
       
     } catch (e) {
       console.error("Send message error:", e);
