@@ -277,7 +277,7 @@ export default function ChatPage() {
       <div className="relative z-10 pt-8 pb-24">
         <div className="mx-auto max-w-4xl px-4">
           {!started ? (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+            <div className="flex flex-col items-center justify-center min-h-[50vh]">
               <Button 
                 onClick={startInterview} 
                 aria-label="면접 시작"
@@ -291,30 +291,6 @@ export default function ChatPage() {
               >
                 면접 시작
               </Button>
-              
-              {/* 개발용 보이스 테스트 버튼 */}
-              {process.env.NODE_ENV === "development" && (
-                <Button
-                  onClick={() => {
-                    const testText = "안녕하세요. 면접을 시작하겠습니다.";
-                    const roles = [
-                      "office-support",
-                      "customer-service",
-                      "assembly-packaging",
-                      "care-support",
-                      "logistics",
-                      "environment-cleaning",
-                    ];
-                    roles.forEach((role) => {
-                      ttsPlayer.enqueue(`${role}: ${testText}`, role);
-                    });
-                  }}
-                  className="bg-purple-100 text-purple-700 hover:bg-purple-200 text-sm px-4 py-2 rounded-lg"
-                  size="sm"
-                >
-                  🔊 보이스 테스트 (개발용)
-                </Button>
-              )}
             </div>
           ) : (
             <>

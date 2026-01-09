@@ -8,12 +8,12 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 // 직무별 voice 매핑
-const VOICE_MAP: Record<string, "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" | "sage"> = {
-  "office-support": "onyx",
+const VOICE_MAP: Record<string, "alloy" | "ash" | "cedar" | "echo" | "fable" | "onyx" | "nova" | "shimmer" | "sage"> = {
+  "office-support": "ash",
   "customer-service": "nova",
-  "assembly-packaging": "echo",
+  "assembly-packaging": "cedar",
   "care-support": "shimmer",
-  "logistics": "fable",
+  "logistics": "onyx",
   "environment-cleaning": "sage",
 };
 
