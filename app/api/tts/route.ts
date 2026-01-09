@@ -27,7 +27,7 @@ const BodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) {
       return Response.json(
         { error: "OPENAI_API_KEY missing", detail: "서버 환경변수에 OPENAI_API_KEY가 설정되지 않았습니다." },
@@ -47,9 +47,10 @@ export async function POST(req: NextRequest) {
     }
 
     // role에 따른 voice 선택
-    const voice = body.role && VOICE_MAP[body.role]
-      ? VOICE_MAP[body.role]
-      : DEFAULT_VOICE;
+    const voice: "alloy" | "ash" | "cedar" | "echo" | "fable" | "onyx" | "nova" | "shimmer" | "sage" = 
+      (body.role && VOICE_MAP[body.role])
+        ? VOICE_MAP[body.role]!
+        : DEFAULT_VOICE;
 
     // OpenAI TTS 호출
     const openai = new OpenAI({ apiKey });
@@ -57,7 +58,6 @@ export async function POST(req: NextRequest) {
       model: "gpt-4o-mini-tts",
       voice,
       input: body.text,
-      format: "mp3",
     });
 
     // mp3 바이너리를 Buffer로 변환
