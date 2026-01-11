@@ -86,10 +86,14 @@ export async function POST(req: NextRequest) {
   const jobId: JobId = isJobId(rawJobId) ? rawJobId : DEFAULT_JOB;
   const systemPrompt = INTERVIEWER_PROMPTS[jobId];
 
-  // 개발 환경에서만 jobId 로그 출력
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[Interview API] jobId: ${jobId}${rawJobId !== jobId ? ` (fallback from: ${rawJobId})` : ""}`);
-    console.log(`[Interview API] Received ${body.messages.length} messages`);
+  // 로깅: 요청 정보 확인
+  console.log(`[Interview API] jobId: ${jobId}${rawJobId !== jobId ? ` (fallback from: ${rawJobId})` : ""}`);
+  console.log(`[Interview API] Received ${body.messages.length} messages`);
+  
+  // 마지막 2개 메시지 로깅 (역할 확인)
+  if (body.messages.length >= 2) {
+    const lastTwo = body.messages.slice(-2);
+    console.log(`[Interview API] Last 2 message roles:`, lastTwo.map(m => m.role));
   }
 
   // messages 배열에서 system 메시지가 있는지 확인
@@ -104,6 +108,8 @@ export async function POST(req: NextRequest) {
     // system 메시지가 없으면 맨 앞에 추가
     messages.unshift({ role: "system", content: systemPrompt });
   }
+
+  console.log(`[Interview API] Sending ${messages.length} messages to OpenAI`);
 
   let resp: Response;
   try {

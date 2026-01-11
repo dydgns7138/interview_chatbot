@@ -48,7 +48,6 @@ export default function ResumePage() {
   const [resumeForm, setResumeForm] = React.useState<ResumeFormData | null>(null);
   const hasReadGuideRef = React.useRef<boolean>(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const [listening, setListening] = React.useState(false);
   const [listeningField, setListeningField] = React.useState<string | null>(null);
   
@@ -237,12 +236,20 @@ export default function ResumePage() {
 
   // 모달 내부에서 카메라 시작
   async function startCameraInModal() {
-    if (!cameraSupported) {
-      setCameraError("이 기기/브라우저에서는 카메라 촬영을 지원하지 않습니다.");
+    // 클라이언트 사이드에서만 실행
+    if (typeof window === "undefined") {
+      setCameraError("카메라는 브라우저에서만 사용할 수 있습니다.");
       return;
     }
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    // HTTPS/secure context 체크
+    if (!window.isSecureContext) {
+      setCameraError("카메라 촬영은 HTTPS 환경에서만 가능합니다. 업로드를 사용해주세요.");
+      return;
+    }
+
+    // getUserMedia 지원 체크
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
       setCameraError("이 기기/브라우저에서는 카메라 촬영을 지원하지 않습니다.");
       return;
     }
@@ -303,14 +310,31 @@ export default function ResumePage() {
       }
     } catch (error: any) {
       console.error("Camera access error:", error);
+      let errorMessage = "카메라에 접근할 수 없습니다.";
+      
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        setCameraError("카메라 권한을 허용해 주세요.");
+        errorMessage = "카메라 권한을 허용해 주세요.";
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-        setCameraError("이 기기에서는 카메라를 사용할 수 없습니다.");
-      } else {
-        setCameraError("카메라에 접근할 수 없습니다. 브라우저 설정에서 카메라 권한을 확인해 주세요.");
+        errorMessage = "이 기기에서는 카메라를 사용할 수 없습니다.";
+      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+        errorMessage = "카메라가 다른 앱에서 사용 중이거나 접근할 수 없습니다.";
+      } else if (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError") {
+        errorMessage = "카메라 설정을 만족할 수 없습니다.";
       }
+      
+      setCameraError(errorMessage);
     }
+  }
+
+  // 업로드로 전환 (에러 발생 시)
+  function handleSwitchToUpload() {
+    handleCloseModal();
+    // 모달이 닫힌 후 파일 업로드 트리거
+    setTimeout(() => {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }, 100);
   }
 
   // video 준비 상태 확인
@@ -371,12 +395,12 @@ export default function ResumePage() {
 
   // 모달 내부에서 사진 찍기 (상태 A → B)
   function handleCapturePhoto() {
-    if (!videoRef.current) {
+    const video = videoRef.current;
+    if (!video) {
       console.log("[Capture] Video ref invalid");
       return;
     }
 
-    const video = videoRef.current;
     const videoWidth = video.videoWidth;
     const videoHeight = video.videoHeight;
 
@@ -408,6 +432,11 @@ export default function ResumePage() {
     const dataUrl = canvas.toDataURL("image/png", 0.92);
     console.log("[Capture] DataURL length:", dataUrl.length);
     console.log("[Capture] DataURL preview (first 100 chars):", dataUrl.substring(0, 100));
+
+    // 캡처 후 스트림 정지 (선택사항 - 미리보기 유지하려면 주석 처리)
+    // if (streamRef.current) {
+    //   streamRef.current.getTracks().forEach((track) => track.stop());
+    // }
 
     // 모달 state에 저장하고 상태 B로 전환
     setCapturedDataUrl(dataUrl);
@@ -992,7 +1021,15 @@ export default function ResumePage() {
                           </h2>
                           {cameraError ? (
                             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
-                              <p className="text-sm text-red-800 dark:text-red-200">{cameraError}</p>
+                              <p className="text-sm text-red-800 dark:text-red-200 mb-3">{cameraError}</p>
+                              <Button
+                                variant="outline"
+                                onClick={handleSwitchToUpload}
+                                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
+                              >
+                                <FileDown className="h-4 w-4 mr-1" />
+                                업로드로 전환
+                              </Button>
                             </div>
                           ) : (
                             <div className="mb-4">
@@ -1013,14 +1050,16 @@ export default function ResumePage() {
                             >
                               닫기
                             </Button>
-                            <Button
-                              onClick={handleCapturePhoto}
-                              disabled={!videoReady || !!cameraError}
-                              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Camera className="h-4 w-4 mr-1" />
-                              촬영하기
-                            </Button>
+                            {!cameraError && (
+                              <Button
+                                onClick={handleCapturePhoto}
+                                disabled={!videoReady}
+                                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Camera className="h-4 w-4 mr-1" />
+                                촬영하기
+                              </Button>
+                            )}
                           </div>
                         </>
                       ) : (

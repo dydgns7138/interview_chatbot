@@ -179,18 +179,8 @@ export default function ChatPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // Handle key down events for text input
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (userDraftAnswer.trim()) {
-        sendMessage(userDraftAnswer.trim());
-      }
-    }
-  };
-
   async function sendMessage(text: string) {
-    if (!text.trim()) return;
+    if (!text.trim() || loading) return; // request de-duplication: 이미 요청 중이면 무시
     
     // Clear previous user message only when starting new response
     setCurrentUserMessage("");
@@ -201,13 +191,20 @@ export default function ChatPage() {
     // Clear input but keep user message visible
     setUserDraftAnswer("");
     
-    // Set loading state
+    // Set loading state (request de-duplication)
     setLoading(true);
 
     // messages 히스토리에 user 메시지 추가
     const userMessage = { role: "user" as const, content: text };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
+
+    // 로깅: 요청 전 메시지 히스토리 확인
+    console.log("[ChatPage] Sending message, history length:", updatedMessages.length);
+    if (updatedMessages.length >= 2) {
+      const lastTwo = updatedMessages.slice(-2);
+      console.log("[ChatPage] Last 2 messages:", lastTwo.map(m => ({ role: m.role, contentLength: m.content.length })));
+    }
 
     try {
       const res = await fetch("/api/chat", {
@@ -251,11 +248,25 @@ export default function ChatPage() {
       // TTS용 텍스트 (화면과 동일, 필요시 별도 전처리 가능)
       const ttsText = displayText;
       
+      // 동일 응답 반복 방지: 마지막 assistant 메시지와 동일하면 재생성 요청
+      const lastAssistantMessage = updatedMessages.filter(m => m.role === "assistant").pop();
+      if (lastAssistantMessage && lastAssistantMessage.content === displayText) {
+        console.warn("[ChatPage] Duplicate response detected, forcing regeneration");
+        // 에러 메시지 대신 다른 질문 요청
+        const fallbackMessage = "죄송합니다. 다른 질문을 드리겠습니다. 지원 동기가 어떻게 되시나요?";
+        const assistantMessage = { role: "assistant" as const, content: fallbackMessage };
+        setMessages([...updatedMessages, assistantMessage]);
+        showInterviewerMessage(fallbackMessage);
+        playInterviewTTS(fallbackMessage);
+        setLoading(false);
+        return;
+      }
+      
       // 디버깅: API 응답 확인 (프로덕션에서도 길이 확인 가능)
       console.log("[ChatPage] API Response received, length:", displayText.length);
+      console.log("[ChatPage] Messages history length before append:", updatedMessages.length);
       if (process.env.NODE_ENV !== "production") {
         console.log("[ChatPage] API Response preview:", displayText.substring(0, 150) + (displayText.length > 150 ? "..." : ""));
-        console.log("[ChatPage] Messages history length:", updatedMessages.length + 1);
       }
       
       // messages 히스토리에 assistant 응답 추가
@@ -307,9 +318,19 @@ export default function ChatPage() {
   }
 
   function handleSubmit() {
-    if (!userDraftAnswer.trim() || loading) return;
+    if (!userDraftAnswer.trim() || loading) return; // request de-duplication
     sendMessage(userDraftAnswer);
   }
+
+  // Handle key down events for text input (request de-duplication)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (userDraftAnswer.trim() && !loading) { // request de-duplication
+        sendMessage(userDraftAnswer.trim());
+      }
+    }
+  };
 
   // Interviewer TTS function (OpenAI TTS 사용)
   function playInterviewTTS(messageText: string) {
