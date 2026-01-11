@@ -5,7 +5,7 @@
 // - 공용 `Header` 와 가운데 정렬된 `main` 컨테이너 렌더링
 import type { Metadata } from "next";
 import "./globals.css";
-import { VoiceProvider } from "@/lib/state/voice-context";
+import { Providers } from "@/components/Providers";
 import { TopNav } from "@/components/Layout/TopNav";
 
 export const metadata: Metadata = {
@@ -21,10 +21,10 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground">
-        <VoiceProvider>
+        <Providers>
           <TopNav />
           <main className="mx-auto max-w-4xl px-4 pb-24 pt-6">{children}</main>
-        </VoiceProvider>
+        </Providers>
       </body>
     </html>
   );

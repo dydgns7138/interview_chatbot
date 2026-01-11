@@ -13,6 +13,7 @@ export const ko = {
     age: { title: "나이", desc: "만 나이를 입력해주세요." },
     address: { title: "사는 곳", desc: "현재 거주지를 알려주세요." },
     desiredJob: { title: "희망 직종", desc: "희망하는 직종을 입력해주세요." },
+    career: { title: "실습 경력", desc: "실습 경력을 입력해 주세요. 실습지, 실습 기간, 맡은 주요 직무를 입력합니다." },
     strengths: { title: "강점", desc: "본인의 강점을 말해 주세요." },
     weaknesses: { title: "약점", desc: "개선하고 싶은 약점을 말해 주세요." }
   },

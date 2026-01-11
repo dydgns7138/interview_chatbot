@@ -5,10 +5,46 @@ import { steps } from "@/lib/navigation";
 import { useVoice } from "@/lib/state/voice-context";
 import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import React from "react";
+
+type TabClickHandler = (href: string, e: React.MouseEvent<HTMLAnchorElement>) => void;
+
+const TabClickContext = React.createContext<TabClickHandler | null>(null);
+
+export function useTabClick() {
+  return React.useContext(TabClickContext);
+}
+
+export function TabClickProvider({ children, onTabClick }: { children: React.ReactNode; onTabClick?: TabClickHandler }) {
+  return (
+    <TabClickContext.Provider value={onTabClick || null}>
+      {children}
+    </TabClickContext.Provider>
+  );
+}
 
 export function TopNav() {
   const pathname = usePathname();
-  const { ttsEnabled, setTtsEnabled } = useVoice();
+  const { screenReaderEnabled, setScreenReaderEnabled } = useVoice();
+  const onTabClick = useTabClick();
+  
+  const handleLinkClick = (href: string, e: React.MouseEvent<HTMLAnchorElement>) => {
+    // 기본정보 탭에서 다른 탭으로 이동할 때만 가로채기
+    if (pathname === "/onboarding" && href !== "/onboarding") {
+      // 항상 preventDefault를 먼저 실행하여 기본 네비게이션 막기
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const handler = (window as any).__onboardingTabClickHandler;
+      if (handler) {
+        handler(href, e);
+      } else {
+        // 핸들러가 없으면 기본 동작 (일반적인 경우는 아님)
+        window.location.href = href;
+      }
+    }
+    // 이력서 탭에서는 누락 확인 모달 없이 바로 이동 (기본 Link 동작 사용)
+  };
   
   return (
     <>
@@ -20,13 +56,13 @@ export function TopNav() {
           </Link>
           <div className="flex items-center gap-2">
             <Button
-              aria-label={ttsEnabled ? "음성 출력 끄기" : "음성 출력 켜기"}
+              aria-label={screenReaderEnabled ? "화면설명 끄기" : "화면설명 켜기"}
               variant="outline"
               size="sm"
-              onClick={() => setTtsEnabled(!ttsEnabled)}
+              onClick={() => setScreenReaderEnabled(!screenReaderEnabled)}
             >
-              {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              <span className="ml-2 hidden sm:inline">{ttsEnabled ? "음성 ON" : "음성 OFF"}</span>
+              {screenReaderEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              <span className="ml-2 hidden sm:inline">{screenReaderEnabled ? "화면설명 ON" : "화면설명 OFF"}</span>
             </Button>
           </div>
         </div>
@@ -40,6 +76,7 @@ export function TopNav() {
               <Link
                 key={s.href}
                 href={s.href}
+                onClick={(e) => handleLinkClick(s.href, e)}
                 className={
                   "rounded-md px-3 py-1.5 transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600/70 " +
                   (pathname === s.href

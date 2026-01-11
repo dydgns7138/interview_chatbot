@@ -2,8 +2,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, Send, Square, Volume2 } from "lucide-react";
-import { createRecognition, getSpeechSupport } from "@/lib/voice";
+import { Mic, Send, Square, Volume2, VolumeX } from "lucide-react";
+import { createRecognition, getSpeechSupport, speak, stopSpeaking } from "@/lib/voice";
 import { useVoice } from "@/lib/state/voice-context";
 import { getSelectedJob } from "@/lib/state/profile";
 import { ttsPlayer } from "./ttsPlayer";
@@ -18,12 +18,28 @@ const interviewImageMap: Record<string, string> = {
   "logistics": "/images/interviewer_trainsportation.png",
 };
 
+// 직무별 이미지 포커스 위치 (얼굴이 위쪽에 보이도록 조정)
+const imagePositionMap: Record<string, string> = {
+  "care-support": "center 20%",
+  "customer-service": "center 25%",
+  "assembly-packaging": "center 20%",
+  // 나머지 직무는 기본값 사용
+};
+
 // 직무 ID에 해당하는 이미지 경로를 반환 (fallback: office-support)
 function getInterviewerImage(jobId: string | null): string {
   if (!jobId) {
     return interviewImageMap["office-support"]!;
   }
   return interviewImageMap[jobId] ?? interviewImageMap["office-support"]!;
+}
+
+// 직무 ID에 해당하는 이미지 포커스 위치를 반환
+function getImagePosition(jobId: string | null): string {
+  if (!jobId) {
+    return "center 150px";
+  }
+  return imagePositionMap[jobId] ?? "center 150px";
 }
 
 export default function ChatPage() {
@@ -44,13 +60,39 @@ export default function ChatPage() {
   const [selectedJobId, setSelectedJobId] = React.useState<string | null>(null);
   
   const support = getSpeechSupport();
-  const { ttsEnabled } = useVoice();
+  const { screenReaderEnabled, interviewVoiceEnabled, setInterviewVoiceEnabled } = useVoice();
   const typingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const userTypingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const hasReadGuideRef = React.useRef<boolean>(false);
   
   // TTS 플레이어 상태
   const [ttsState, setTtsState] = React.useState(ttsPlayer.getState());
+
+  // 화면설명 안내 문구
+  const guideText = "면접 시작 버튼을 누르시면 면접관과의 대화가 실행됩니다.";
+
+  // 화면설명 안내 문구 읽기 (면접 탭 진입 시 또는 화면설명 ON으로 전환 시)
+  React.useEffect(() => {
+    if (screenReaderEnabled && !hasReadGuideRef.current) {
+      stopSpeaking();
+      speak(guideText, { lang: "ko-KR" });
+      hasReadGuideRef.current = true;
+    }
+    return () => {
+      if (!screenReaderEnabled) {
+        hasReadGuideRef.current = false;
+      }
+    };
+  }, [screenReaderEnabled]);
+
+  // 컴포넌트 언마운트 시 리셋
+  React.useEffect(() => {
+    return () => {
+      hasReadGuideRef.current = false;
+      stopSpeaking();
+    };
+  }, []);
 
   // Load selected job info
   React.useEffect(() => {
@@ -251,18 +293,19 @@ export default function ChatPage() {
 
   // Interviewer TTS function (OpenAI TTS 사용)
   function playInterviewTTS(messageText: string) {
-    if (ttsEnabled) {
+    if (interviewVoiceEnabled) {
       ttsPlayer.enqueue(messageText, selectedJobId);
     }
   }
 
-  // 선택된 직무에 따른 면접관 이미지 경로
+  // 선택된 직무에 따른 면접관 이미지 경로 및 포커스 위치
   const interviewerImage = getInterviewerImage(selectedJobId);
+  const imagePosition = getImagePosition(selectedJobId);
   
   // 디버깅: jobId와 이미지 경로 로그
   React.useEffect(() => {
-    console.log('[ChatPage] selectedJobId:', selectedJobId, '-> image:', interviewerImage);
-  }, [selectedJobId, interviewerImage]);
+    console.log('[ChatPage] selectedJobId:', selectedJobId, '-> image:', interviewerImage, '-> position:', imagePosition);
+  }, [selectedJobId, interviewerImage, imagePosition]);
 
   return (
     <div 
@@ -271,7 +314,7 @@ export default function ChatPage() {
       style={{
         backgroundImage: `url("${interviewerImage}")`,
         backgroundSize: 'contain',
-        backgroundPosition: 'center 150px',
+        backgroundPosition: imagePosition,
         backgroundRepeat: 'no-repeat',
         position: 'fixed',
         top: 0,
@@ -283,9 +326,23 @@ export default function ChatPage() {
       {/* Top white overlay to prevent menu overlap */}
       <div className="absolute top-0 left-0 right-0 h-20 bg-white z-50"></div>
       
+      {/* 면접 음성 토글 버튼 */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <Button
+          aria-label={interviewVoiceEnabled ? "음성 끄기" : "음성 켜기"}
+          variant="outline"
+          size="sm"
+          onClick={() => setInterviewVoiceEnabled(!interviewVoiceEnabled)}
+          className="bg-white/90 backdrop-blur"
+        >
+          {interviewVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          <span className="ml-2 hidden sm:inline">{interviewVoiceEnabled ? "음성 ON" : "음성 OFF"}</span>
+        </Button>
+      </div>
+
       {/* TTS 상태 표시 */}
-      {ttsEnabled && (ttsState.isSpeaking || ttsState.queueLength > 0) && (
-        <div className="absolute top-4 right-4 z-50 bg-white/90 backdrop-blur rounded-lg px-3 py-2 shadow-lg flex items-center gap-2">
+      {interviewVoiceEnabled && (ttsState.isSpeaking || ttsState.queueLength > 0) && (
+        <div className="absolute top-16 right-4 z-50 bg-white/90 backdrop-blur rounded-lg px-3 py-2 shadow-lg flex items-center gap-2">
           <Volume2 className="h-4 w-4 text-blue-600 animate-pulse" />
           <span className="text-sm text-slate-700">
             {ttsState.isSpeaking ? "🔊 재생 중..." : `대기 중 (${ttsState.queueLength})`}

@@ -8,7 +8,7 @@ import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Header() {
-  const { ttsEnabled, setTtsEnabled } = useVoice();
+  const { screenReaderEnabled, setScreenReaderEnabled } = useVoice();
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
@@ -17,13 +17,13 @@ export function Header() {
         </Link>
         <div className="flex items-center gap-2">
           <Button
-            aria-label={ttsEnabled ? "음성 출력 끄기" : "음성 출력 켜기"}
+            aria-label={screenReaderEnabled ? "화면설명 끄기" : "화면설명 켜기"}
             variant="outline"
             size="sm"
-            onClick={() => setTtsEnabled(!ttsEnabled)}
+            onClick={() => setScreenReaderEnabled(!screenReaderEnabled)}
           >
-            {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            <span className="ml-2 hidden sm:inline">{ttsEnabled ? "음성 ON" : "음성 OFF"}</span>
+            {screenReaderEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            <span className="ml-2 hidden sm:inline">{screenReaderEnabled ? "화면설명 ON" : "화면설명 OFF"}</span>
           </Button>
         </div>
       </div>
