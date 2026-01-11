@@ -322,6 +322,8 @@ export default function ResumePage() {
     }
 
     function handleLoadedMetadata() {
+      const video = videoRef.current;
+      if (!video) return;
       if (video.videoWidth > 0 && video.videoHeight > 0) {
         setVideoReady(true);
         console.log("[Camera] Video ready:", video.videoWidth, "x", video.videoHeight);
@@ -329,6 +331,8 @@ export default function ResumePage() {
     }
 
     function handleCanPlay() {
+      const video = videoRef.current;
+      if (!video) return;
       if (video.videoWidth > 0 && video.videoHeight > 0) {
         setVideoReady(true);
         console.log("[Camera] Video can play:", video.videoWidth, "x", video.videoHeight);
