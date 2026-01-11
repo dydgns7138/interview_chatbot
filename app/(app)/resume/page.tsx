@@ -197,7 +197,9 @@ export default function ResumePage() {
 
   // 카메라 지원 여부 확인
   React.useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (typeof navigator !== "undefined" && 
+        navigator.mediaDevices && 
+        typeof navigator.mediaDevices.getUserMedia === "function") {
       setCameraSupported(true);
     } else {
       setCameraSupported(false);
