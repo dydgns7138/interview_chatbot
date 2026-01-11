@@ -48,6 +48,9 @@ export default function ChatPage() {
   const [listening, setListening] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   
+  // 대화 히스토리 관리 (OpenAI messages 형식)
+  const [messages, setMessages] = React.useState<Array<{ role: "system" | "user" | "assistant"; content: string }>>([]);
+  
   // Live interview state - only current messages
   const [currentInterviewerMessage, setCurrentInterviewerMessage] = React.useState("");
   const [currentUserMessage, setCurrentUserMessage] = React.useState("");
@@ -159,11 +162,16 @@ export default function ChatPage() {
 
   async function startInterview() {
     setStarted(true);
-    const initialMessage = "안녕하세요! 면접 연습을 시작해볼까요? 준비되셨다면 소개를 부탁드립니다.";
+    const initialMessage = "안녕하세요. 면접 시작하겠습니다. 준비되셨다면 자기소개 부탁드립니다.";
     
     // Clear any previous messages and show only current interviewer message
     setCurrentUserMessage("");
     setCurrentInterviewerMessage("");
+    
+    // messages 히스토리 초기화 및 첫 assistant 메시지 추가 (웰컴메시지)
+    setMessages([
+      { role: "assistant", content: initialMessage }
+    ]);
     
     // Show message immediately and TTS
     showInterviewerMessage(initialMessage);
@@ -196,12 +204,17 @@ export default function ChatPage() {
     // Set loading state
     setLoading(true);
 
+    // messages 히스토리에 user 메시지 추가
+    const userMessage = { role: "user" as const, content: text };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          message: text,
+          messages: updatedMessages,
           jobId: selectedJobId 
         }),
       });
@@ -242,7 +255,12 @@ export default function ChatPage() {
       console.log("[ChatPage] API Response received, length:", displayText.length);
       if (process.env.NODE_ENV !== "production") {
         console.log("[ChatPage] API Response preview:", displayText.substring(0, 150) + (displayText.length > 150 ? "..." : ""));
+        console.log("[ChatPage] Messages history length:", updatedMessages.length + 1);
       }
+      
+      // messages 히스토리에 assistant 응답 추가
+      const assistantMessage = { role: "assistant" as const, content: displayText };
+      setMessages([...updatedMessages, assistantMessage]);
       
       // Show new interviewer message immediately (화면 표시용 - 원본 텍스트)
       showInterviewerMessage(displayText);
@@ -254,6 +272,8 @@ export default function ChatPage() {
       const errorMessage = "오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
       showInterviewerMessage(errorMessage);
       playInterviewTTS(errorMessage);
+      // 에러 발생 시 messages 히스토리에서 마지막 user 메시지 제거 (롤백)
+      setMessages(messages);
     } finally {
       // CRITICAL: Always re-enable input
       setLoading(false);

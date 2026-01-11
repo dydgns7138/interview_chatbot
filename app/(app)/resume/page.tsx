@@ -51,6 +51,16 @@ export default function ResumePage() {
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const [listening, setListening] = React.useState(false);
   const [listeningField, setListeningField] = React.useState<string | null>(null);
+  
+  // 카메라 관련 state와 ref
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [modalMode, setModalMode] = React.useState<"preview" | "result">("preview");
+  const [capturedDataUrl, setCapturedDataUrl] = React.useState<string | null>(null);
+  const [videoReady, setVideoReady] = React.useState(false);
+  const [cameraError, setCameraError] = React.useState<string | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const [cameraSupported, setCameraSupported] = React.useState(true);
 
   // 기본정보가 없으면 기본정보 페이지로 리다이렉트
   React.useEffect(() => {
@@ -174,7 +184,24 @@ export default function ResumePage() {
     return () => {
       hasReadGuideRef.current = false;
       stopSpeaking();
+      // 카메라 스트림 정리
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
     };
+  }, []);
+
+  // 카메라 지원 여부 확인
+  React.useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setCameraSupported(true);
+    } else {
+      setCameraSupported(false);
+    }
   }, []);
 
   // 사진 업로드
@@ -189,6 +216,235 @@ export default function ResumePage() {
     };
     reader.readAsDataURL(file);
   }
+
+  // 모달 열기 (사진 찍기 버튼 클릭)
+  function handleOpenCameraModal() {
+    setIsModalOpen(true);
+    setModalMode("preview");
+    setCapturedDataUrl(null);
+    setCameraError(null);
+    setVideoReady(false);
+  }
+
+  // 모달이 열리면 카메라 자동 시작
+  React.useEffect(() => {
+    if (isModalOpen && modalMode === "preview") {
+      startCameraInModal();
+    }
+  }, [isModalOpen, modalMode]);
+
+  // 모달 내부에서 카메라 시작
+  async function startCameraInModal() {
+    if (!cameraSupported) {
+      setCameraError("이 기기/브라우저에서는 카메라 촬영을 지원하지 않습니다.");
+      return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError("이 기기/브라우저에서는 카메라 촬영을 지원하지 않습니다.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      setVideoReady(false); // 초기화
+      setCameraError(null);
+
+      // videoRef가 준비될 때까지 약간 대기 (모달이 열리고 DOM에 렌더링될 시간)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        
+        // video가 준비될 때까지 대기하고 videoReady 설정
+        const checkVideoReady = () => {
+          if (videoRef.current) {
+            const video = videoRef.current;
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              setVideoReady(true);
+              console.log("[Camera] Video ready:", video.videoWidth, "x", video.videoHeight);
+            } else {
+              // 아직 준비되지 않았으면 잠시 후 다시 체크
+              setTimeout(checkVideoReady, 100);
+            }
+          }
+        };
+        
+        // 이벤트 리스너로도 체크
+        const handleLoadedMetadata = () => {
+          if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+            setVideoReady(true);
+            console.log("[Camera] Video ready (loadedmetadata):", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
+          }
+        };
+        
+        const handleCanPlay = () => {
+          if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+            setVideoReady(true);
+            console.log("[Camera] Video ready (canplay):", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
+          }
+        };
+        
+        videoRef.current.addEventListener("loadedmetadata", handleLoadedMetadata, { once: true });
+        videoRef.current.addEventListener("canplay", handleCanPlay, { once: true });
+        
+        // 즉시 체크 및 주기적 체크
+        checkVideoReady();
+      } else {
+        console.warn("[Camera] videoRef.current is null after waiting");
+      }
+    } catch (error: any) {
+      console.error("Camera access error:", error);
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        setCameraError("카메라 권한을 허용해 주세요.");
+      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+        setCameraError("이 기기에서는 카메라를 사용할 수 없습니다.");
+      } else {
+        setCameraError("카메라에 접근할 수 없습니다. 브라우저 설정에서 카메라 권한을 확인해 주세요.");
+      }
+    }
+  }
+
+  // video 준비 상태 확인
+  React.useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isModalOpen || modalMode !== "preview") {
+      setVideoReady(false);
+      return;
+    }
+
+    function handleLoadedMetadata() {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setVideoReady(true);
+        console.log("[Camera] Video ready:", video.videoWidth, "x", video.videoHeight);
+      }
+    }
+
+    function handleCanPlay() {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setVideoReady(true);
+        console.log("[Camera] Video can play:", video.videoWidth, "x", video.videoHeight);
+      }
+    }
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("canplay", handleCanPlay);
+
+    // 이미 로드된 경우 즉시 체크
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      setVideoReady(true);
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("canplay", handleCanPlay);
+    };
+  }, [isModalOpen, modalMode]);
+
+  // 모달 닫기 및 카메라 정리
+  function handleCloseModal() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsModalOpen(false);
+    setModalMode("preview");
+    setCapturedDataUrl(null);
+    setVideoReady(false);
+    setCameraError(null);
+  }
+
+  // 모달 내부에서 사진 찍기 (상태 A → B)
+  function handleCapturePhoto() {
+    if (!videoRef.current) {
+      console.log("[Capture] Video ref invalid");
+      return;
+    }
+
+    const video = videoRef.current;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+
+    console.log("[Capture] Video dimensions:", videoWidth, "x", videoHeight);
+
+    // videoWidth/videoHeight가 0이면 캡처 실패
+    if (videoWidth === 0 || videoHeight === 0) {
+      alert("카메라 준비 중입니다. 잠시 후 다시 눌러주세요.");
+      console.log("[Capture] Video not ready - dimensions are 0");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.log("[Capture] Failed to get canvas context");
+      return;
+    }
+
+    // 좌우 반전 적용 (미리보기와 동일하게)
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // DataURL 방식으로 직접 변환 (가장 확실한 방법)
+    const dataUrl = canvas.toDataURL("image/png", 0.92);
+    console.log("[Capture] DataURL length:", dataUrl.length);
+    console.log("[Capture] DataURL preview (first 100 chars):", dataUrl.substring(0, 100));
+
+    // 모달 state에 저장하고 상태 B로 전환
+    setCapturedDataUrl(dataUrl);
+    setModalMode("result");
+  }
+
+  // 사진 사용하기 (상태 B → 이력서에 적용)
+  function handleUsePhoto() {
+    if (!capturedDataUrl) return;
+
+    // 이력서 사진 state에 저장
+    setResumeForm((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, photo: capturedDataUrl };
+      console.log("[UsePhoto] State updated, photo set:", updated.photo ? "YES (length: " + updated.photo.length + ")" : "NO");
+      return updated;
+    });
+
+    // 모달 닫기 및 카메라 정리
+    handleCloseModal();
+  }
+
+  // 다시 찍기 (상태 B → A)
+  function handleRetakePhoto() {
+    setCapturedDataUrl(null);
+    setModalMode("preview");
+  }
+
+  // ESC 키로 모달 닫기
+  React.useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape" && isModalOpen) {
+        handleCloseModal();
+      }
+    }
+
+    if (isModalOpen) {
+      window.addEventListener("keydown", handleEscape);
+      return () => {
+        window.removeEventListener("keydown", handleEscape);
+      };
+    }
+  }, [isModalOpen]);
 
   // 음성 입력 시작 (특정 필드용)
   function handleVoiceInput(fieldName: string) {
@@ -501,46 +757,32 @@ export default function ResumePage() {
                     onChange={handlePhotoUpload}
                     className="hidden"
                   />
-                  <input
-                    ref={cameraInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="user"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => {
                       if (fileInputRef.current) {
-                        // capture 속성 제거 (파일 선택만)
-                        fileInputRef.current.removeAttribute("capture");
                         fileInputRef.current.click();
                       }
                     }}
                     className="w-full"
                   >
                     <FileDown className="h-3 w-3 mr-1" />
-                    업로드
+                    사진 업로드
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (cameraInputRef.current) {
-                        // capture="user" 속성 보장 (카메라 접근)
-                        cameraInputRef.current.setAttribute("capture", "user");
-                        cameraInputRef.current.click();
-                      }
-                    }}
-                    className="w-full"
-                  >
-                    <Camera className="h-3 w-3 mr-1" />
-                    촬영
-                  </Button>
+                  {cameraSupported && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenCameraModal}
+                      className="w-full"
+                    >
+                      <Camera className="h-3 w-3 mr-1" />
+                      사진 찍기
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -732,6 +974,84 @@ export default function ResumePage() {
           </div>
         </div>
 
+                {/* 촬영 모달 */}
+                {isModalOpen && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 print:hidden">
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 dark:bg-slate-800">
+                      {modalMode === "preview" ? (
+                        /* 상태 A: 미리보기 단계 */
+                        <>
+                          <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-slate-100">
+                            사진 촬영
+                          </h2>
+                          {cameraError ? (
+                            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
+                              <p className="text-sm text-red-800 dark:text-red-200">{cameraError}</p>
+                            </div>
+                          ) : (
+                            <div className="mb-4">
+                              <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full rounded-lg border-2 border-slate-300 bg-slate-900"
+                                style={{ transform: "scaleX(-1)" }}
+                              />
+                            </div>
+                          )}
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={handleCloseModal}
+                            >
+                              닫기
+                            </Button>
+                            <Button
+                              onClick={handleCapturePhoto}
+                              disabled={!videoReady || !!cameraError}
+                              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Camera className="h-4 w-4 mr-1" />
+                              촬영하기
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        /* 상태 B: 촬영 결과 미리보기 */
+                        <>
+                          <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-slate-100">
+                            촬영 결과
+                          </h2>
+                          {capturedDataUrl && (
+                            <div className="mb-4">
+                              <img
+                                src={capturedDataUrl}
+                                alt="촬영된 사진"
+                                className="w-full rounded-lg border-2 border-slate-300"
+                              />
+                            </div>
+                          )}
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={handleRetakePhoto}
+                            >
+                              다시찍기
+                            </Button>
+                            <Button
+                              onClick={handleUsePhoto}
+                              className="bg-indigo-600 hover:bg-indigo-700"
+                            >
+                              사진 사용하기
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* 버튼 영역 */}
                 <div className="mt-6 flex items-center justify-between gap-4 print:hidden">
                   <div className="flex items-center gap-3">
@@ -789,6 +1109,13 @@ export default function ResumePage() {
           #resume-content .print\\:break-inside-avoid {
             page-break-inside: avoid;
             break-inside: avoid;
+          }
+          /* 카메라 관련 UI 인쇄 시 숨김 */
+          #resume-content video,
+          #resume-content button[class*="카메라"],
+          #resume-content button:has(svg[class*="Camera"]) {
+            display: none !important;
+            visibility: hidden !important;
           }
           @page {
             margin: 0.8cm;

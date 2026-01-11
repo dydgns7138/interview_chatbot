@@ -15,8 +15,13 @@ function isJobId(value: string | null | undefined): value is JobId {
 
 export const runtime = "edge";
 
+const MessageSchema = z.object({
+  role: z.enum(["system", "user", "assistant"]),
+  content: z.string(),
+});
+
 const BodySchema = z.object({
-  message: z.string().min(1).max(2000).regex(/^[^<>]*$/, "HTML 태그는 허용되지 않습니다"),
+  messages: z.array(MessageSchema).min(1),
   jobId: z.string().optional().nullable(),
 });
 
@@ -84,6 +89,20 @@ export async function POST(req: NextRequest) {
   // 개발 환경에서만 jobId 로그 출력
   if (process.env.NODE_ENV !== "production") {
     console.log(`[Interview API] jobId: ${jobId}${rawJobId !== jobId ? ` (fallback from: ${rawJobId})` : ""}`);
+    console.log(`[Interview API] Received ${body.messages.length} messages`);
+  }
+
+  // messages 배열에서 system 메시지가 있는지 확인
+  // 없으면 맨 앞에 system 프롬프트 추가, 있으면 첫 번째 system 메시지를 프롬프트로 교체
+  const messages = [...body.messages];
+  const systemMessageIndex = messages.findIndex(msg => msg.role === "system");
+  
+  if (systemMessageIndex >= 0) {
+    // system 메시지가 있으면 프롬프트로 교체
+    messages[systemMessageIndex] = { role: "system", content: systemPrompt };
+  } else {
+    // system 메시지가 없으면 맨 앞에 추가
+    messages.unshift({ role: "system", content: systemPrompt });
   }
 
   let resp: Response;
@@ -97,10 +116,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         stream: true,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: body.message },
-        ],
+        messages: messages,
         max_tokens: 1000, // 토큰 제한으로 비용 관리
         temperature: 0.7, // 일관성 있는 응답을 위한 온도 설정
       }),
