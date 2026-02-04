@@ -238,7 +238,9 @@ export default function ChatPageClient({ interviewerMap }: Props) {
     
     // 뒤에서부터 평가 키워드가 있는 메시지 찾기
     for (let i = assistants.length - 1; i >= 0; i--) {
-      const content = (assistants[i].content ?? "").toString();
+      const assistant = assistants[i];
+      if (!assistant) continue;
+      const content = (assistant.content ?? "").toString();
       if (patterns.some((re) => re.test(content))) {
         console.log("[Interview] Evaluation message found at index", i);
         return content;
@@ -247,9 +249,12 @@ export default function ChatPageClient({ interviewerMap }: Props) {
     
     // 패턴이 안 잡히면 마지막 assistant 메시지 fallback
     if (assistants.length > 0) {
-      const lastContent = assistants[assistants.length - 1].content ?? null;
-      console.log("[Interview] Using last assistant message as fallback");
-      return lastContent;
+      const lastAssistant = assistants[assistants.length - 1];
+      if (lastAssistant) {
+        const lastContent = lastAssistant.content ?? null;
+        console.log("[Interview] Using last assistant message as fallback");
+        return lastContent;
+      }
     }
     
     console.log("[Interview] No evaluation message found");
