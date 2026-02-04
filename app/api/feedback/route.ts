@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { evaluationText, recentMessages } = BodySchema.parse(body);
 
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const OPENAI_API_KEY = process.env['OPENAI_API_KEY'];
     if (!OPENAI_API_KEY) {
       return new Response(JSON.stringify({ error: "API key not configured" }), {
         status: 500,
