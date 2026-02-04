@@ -10,6 +10,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+      },
       keyframes: {
         blink: {
           "0%, 100%": { opacity: "0" },

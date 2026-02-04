@@ -102,7 +102,7 @@ export default function OnboardingPage() {
     age: string;
     address: { sido: string; gugun: string; detailAddress: string };
     desiredJob: { selected: string; custom: string };
-    career: { organization: string; period: string; periodUnit: string; duties: string };
+    career: { organization: string; startDate: string; endDate: string; duties: string };
     strengths: string;
     weaknesses: string;
   }>({
@@ -111,7 +111,7 @@ export default function OnboardingPage() {
     age: "",
     address: { sido: "", gugun: "", detailAddress: "" },
     desiredJob: { selected: "", custom: "" },
-    career: { organization: "", period: "", periodUnit: "주", duties: "" },
+    career: { organization: "", startDate: "", endDate: "", duties: "" },
     strengths: "",
     weaknesses: "",
   });
@@ -202,8 +202,8 @@ export default function OnboardingPage() {
         }
         return !!job.selected;
       case "career":
-        const career = value as { organization: string; period: string; periodUnit: string; duties: string };
-        return !!(career.organization.trim() && career.period.trim() && parseInt(career.period) >= 1 && career.duties.trim());
+        const career = value as { organization: string; startDate: string; endDate: string; duties: string };
+        return !!(career.organization.trim() && career.startDate.trim() && career.endDate.trim() && career.duties.trim() && new Date(career.startDate) <= new Date(career.endDate));
       default:
         return false;
     }
@@ -409,7 +409,7 @@ export default function OnboardingPage() {
           break;
         case "career":
           const career = formData.career;
-          isEmpty = !(career.organization.trim() && career.period.trim() && parseInt(career.period) >= 1 && career.duties.trim());
+          isEmpty = !(career.organization.trim() && career.startDate.trim() && career.endDate.trim() && career.duties.trim() && new Date(career.startDate) <= new Date(career.endDate));
           break;
         case "strengths":
           isEmpty = !formData.strengths.trim();
@@ -731,66 +731,6 @@ export default function OnboardingPage() {
     }
 
     if (current.key === "career") {
-      // 실습 기간용 마이크 버튼 (숫자만 추출)
-      const periodMicButton = (
-        <Button
-          aria-pressed={listening && current.key === "career"}
-          aria-label={listening ? "음성 입력 중지" : "음성 입력 시작"}
-          variant="outline"
-          onClick={() => {
-            if (!support.sttSupported) {
-              setNotice(ko.errors.sttUnavailable);
-              return;
-            }
-            if (listening) {
-              (window as any)._recognition?.stop();
-              setListening(false);
-              return;
-            }
-            const recognition = createRecognition("ko-KR");
-            if (!recognition) {
-              setNotice(ko.errors.sttUnavailable);
-              return;
-            }
-            (window as any)._recognition = recognition;
-            recognition.onresult = (event: SpeechRecognitionEvent) => {
-              for (let i = event.resultIndex; i < event.results.length; i++) {
-                const res = event.results[i];
-                if (!res || !res.isFinal) continue;
-                const transcript = res[0]?.transcript?.trim();
-                if (transcript) {
-                  // 숫자만 추출
-                  const numbers = transcript.replace(/\D/g, "");
-                  if (numbers) {
-                    setFormData((prev) => ({
-                      ...prev,
-                      career: { ...prev.career, period: numbers },
-                    }));
-                    if (formData.career.organization.trim() || formData.career.duties.trim()) {
-                      setSkippedFields((prev) => {
-                        const next = new Set(prev);
-                        next.delete("career");
-                        return next;
-                      });
-                    }
-                  }
-                }
-              }
-            };
-            recognition.onerror = (e: any) => {
-              if (e.error === "not-allowed") setNotice(ko.errors.sttDenied);
-              setListening(false);
-            };
-            recognition.onend = () => setListening(false);
-            recognition.start();
-            setListening(true);
-          }}
-          className="flex-shrink-0"
-        >
-          {listening && current.key === "career" ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </Button>
-      );
-
       return (
         <div className="space-y-4">
           <div>
@@ -804,7 +744,7 @@ export default function OnboardingPage() {
                     ...prev,
                     career: { ...prev.career, organization: e.target.value },
                   }));
-                  if (e.target.value.trim() || formData.career.period.trim() || formData.career.duties.trim()) {
+                  if (e.target.value.trim() || formData.career.startDate.trim() || formData.career.endDate.trim() || formData.career.duties.trim()) {
                     setSkippedFields((prev) => {
                       const next = new Set(prev);
                       next.delete("career");
@@ -819,46 +759,67 @@ export default function OnboardingPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-300">실습 기간</label>
-            <div className="flex items-center gap-2">
-              {periodMicButton}
-              <Input
-                type="number"
-                min="1"
-                value={formData.career.period}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "" || (!isNaN(Number(val)) && Number(val) >= 0)) {
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">시작일</label>
+                <Input
+                  type="date"
+                  value={formData.career.startDate}
+                  onChange={(e) => {
+                    const val = e.target.value;
                     setFormData((prev) => ({
                       ...prev,
-                      career: { ...prev.career, period: val },
+                      career: { ...prev.career, startDate: val },
                     }));
-                    if (val.trim() || formData.career.organization.trim() || formData.career.duties.trim()) {
+                    // 종료일이 시작일보다 이전이면 종료일도 업데이트
+                    if (val && formData.career.endDate && new Date(val) > new Date(formData.career.endDate)) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        career: { ...prev.career, endDate: val },
+                      }));
+                    }
+                    if (val.trim() || formData.career.organization.trim() || formData.career.endDate.trim() || formData.career.duties.trim()) {
                       setSkippedFields((prev) => {
                         const next = new Set(prev);
                         next.delete("career");
                         return next;
                       });
                     }
-                  }
-                }}
-                placeholder="숫자만 입력"
-                className="w-32"
-              />
-              <select
-                value={formData.career.periodUnit}
-                onChange={(e) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    career: { ...prev.career, periodUnit: e.target.value },
-                  }));
-                }}
-                className="px-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
-              >
-                <option value="일">일</option>
-                <option value="주">주</option>
-                <option value="달">달</option>
-              </select>
+                  }}
+                  max={formData.career.endDate || undefined}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex items-center pt-6">
+                <span className="text-slate-400">~</span>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1 dark:text-slate-400">종료일</label>
+                <Input
+                  type="date"
+                  value={formData.career.endDate}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      career: { ...prev.career, endDate: val },
+                    }));
+                    if (val.trim() || formData.career.organization.trim() || formData.career.startDate.trim() || formData.career.duties.trim()) {
+                      setSkippedFields((prev) => {
+                        const next = new Set(prev);
+                        next.delete("career");
+                        return next;
+                      });
+                    }
+                  }}
+                  min={formData.career.startDate || undefined}
+                  className="w-full"
+                />
+              </div>
             </div>
+            {formData.career.startDate && formData.career.endDate && new Date(formData.career.startDate) > new Date(formData.career.endDate) && (
+              <p className="mt-1 text-xs text-red-500">종료일은 시작일보다 이후여야 합니다.</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-300">맡은 주요 직무</label>
@@ -871,7 +832,7 @@ export default function OnboardingPage() {
                     ...prev,
                     career: { ...prev.career, duties: e.target.value },
                   }));
-                  if (e.target.value.trim() || formData.career.organization.trim() || formData.career.period.trim()) {
+                  if (e.target.value.trim() || formData.career.organization.trim() || formData.career.startDate.trim() || formData.career.endDate.trim()) {
                     setSkippedFields((prev) => {
                       const next = new Set(prev);
                       next.delete("career");
@@ -1020,16 +981,16 @@ export default function OnboardingPage() {
                   >
                     {ko.skip}
                   </Button>
+                  {stepIndex === total - 1 && isStep8Completed && (
+                    <Button
+                      onClick={handleGoToResume}
+                      className="bg-red-200 hover:bg-red-300 text-red-900 dark:bg-red-900/30 dark:hover:bg-red-900/40 dark:text-red-200"
+                      disabled={isTransitioning}
+                    >
+                      이력서 작성으로 이동
+                    </Button>
+                  )}
                 </div>
-                {stepIndex === total - 1 && isStep8Completed && (
-                  <Button
-                    onClick={handleGoToResume}
-                    className="bg-red-200 hover:bg-red-300 text-red-900 dark:bg-red-900/30 dark:hover:bg-red-900/40 dark:text-red-200"
-                    disabled={isTransitioning}
-                  >
-                    이력서 작성으로 이동
-                  </Button>
-                )}
               </div>
             </motion.div>
           </AnimatePresence>

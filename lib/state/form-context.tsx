@@ -8,7 +8,7 @@ export type FormData = {
   age: string;
   address: { sido: string; gugun: string; detailAddress: string };
   desiredJob: { selected: string; custom: string };
-  career: { organization: string; period: string; periodUnit: string; duties: string };
+  career: { organization: string; startDate: string; endDate: string; duties: string };
   strengths: string;
   weaknesses: string;
 };

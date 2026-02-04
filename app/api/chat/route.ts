@@ -81,19 +81,28 @@ export async function POST(req: NextRequest) {
     return new Response("잘못된 요청", { status: 400, headers: corsHeaders });
   }
 
-  // 직무별 시스템 프롬프트 선택
+  // 직무별 시스템 프롬프트 선택 (SSOT: 단일 소스)
   const rawJobId = body.jobId;
   const jobId: JobId = isJobId(rawJobId) ? rawJobId : DEFAULT_JOB;
   const systemPrompt = INTERVIEWER_PROMPTS[jobId];
 
-  // 로깅: 요청 정보 확인
-  console.log(`[Interview API] jobId: ${jobId}${rawJobId !== jobId ? ` (fallback from: ${rawJobId})` : ""}`);
+  // 로깅: 프롬프트 동기화 검증
+  console.log(`[Interview API] ===== Prompt Sync Check =====`);
+  console.log(`[Interview API] Raw jobId: ${rawJobId}`);
+  console.log(`[Interview API] Resolved jobId: ${jobId}${rawJobId !== jobId ? ` (⚠️ FALLBACK from: ${rawJobId})` : ""}`);
+  console.log(`[Interview API] Prompt preview (first 200 chars): ${systemPrompt.substring(0, 200)}...`);
+  console.log(`[Interview API] Prompt length: ${systemPrompt.length} chars`);
   console.log(`[Interview API] Received ${body.messages.length} messages`);
   
   // 마지막 2개 메시지 로깅 (역할 확인)
   if (body.messages.length >= 2) {
     const lastTwo = body.messages.slice(-2);
     console.log(`[Interview API] Last 2 message roles:`, lastTwo.map(m => m.role));
+  }
+  
+  // jobId가 fallback된 경우 경고
+  if (rawJobId !== jobId) {
+    console.warn(`[Interview API] ⚠️ JobId mismatch! Raw: "${rawJobId}", Resolved: "${jobId}". Using fallback prompt.`);
   }
 
   // messages 배열에서 system 메시지가 있는지 확인
@@ -104,11 +113,16 @@ export async function POST(req: NextRequest) {
   if (systemMessageIndex >= 0) {
     // system 메시지가 있으면 프롬프트로 교체
     messages[systemMessageIndex] = { role: "system", content: systemPrompt };
+    console.log(`[Interview API] System message replaced at index ${systemMessageIndex}`);
   } else {
     // system 메시지가 없으면 맨 앞에 추가
     messages.unshift({ role: "system", content: systemPrompt });
+    console.log(`[Interview API] System message added at the beginning`);
   }
 
+  // 최종 메시지 배열 검증
+  console.log(`[Interview API] Final messages array: ${messages.length} messages`);
+  console.log(`[Interview API] First message role: ${messages[0]?.role}, content preview: ${messages[0]?.content?.substring(0, 100)}...`);
   console.log(`[Interview API] Sending ${messages.length} messages to OpenAI`);
 
   let resp: Response;

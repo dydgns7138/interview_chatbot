@@ -97,11 +97,18 @@ export default function ResumePage() {
                 let careerData: Array<{ organization: string; period: string; duties: string }> = [];
                 if (currentFormData.career && (currentFormData.career.organization.trim() || currentFormData.career.duties.trim())) {
                   // 기본정보에서 입력한 실습 경력이 있으면 그것을 우선 사용
+                  // 날짜를 기간 문자열로 변환
+                  let periodStr = "";
+                  if (currentFormData.career.startDate && currentFormData.career.endDate) {
+                    const start = new Date(currentFormData.career.startDate);
+                    const end = new Date(currentFormData.career.endDate);
+                    const startStr = `${start.getFullYear()}.${String(start.getMonth() + 1).padStart(2, '0')}.${String(start.getDate()).padStart(2, '0')}`;
+                    const endStr = `${end.getFullYear()}.${String(end.getMonth() + 1).padStart(2, '0')}.${String(end.getDate()).padStart(2, '0')}`;
+                    periodStr = `${startStr} ~ ${endStr}`;
+                  }
                   careerData = [{
                     organization: currentFormData.career.organization,
-                    period: currentFormData.career.period && currentFormData.career.periodUnit 
-                      ? `${currentFormData.career.period}${currentFormData.career.periodUnit}` 
-                      : currentFormData.career.period,
+                    period: periodStr,
                     duties: currentFormData.career.duties,
                   }];
                 } else if (data.career && data.career.length > 0) {
@@ -132,11 +139,18 @@ export default function ResumePage() {
                 // 실습 경력 데이터 처리
                 let careerData: Array<{ organization: string; period: string; duties: string }> = [];
                 if (currentFormData.career && (currentFormData.career.organization.trim() || currentFormData.career.duties.trim())) {
+                  // 날짜를 기간 문자열로 변환
+                  let periodStr = "";
+                  if (currentFormData.career.startDate && currentFormData.career.endDate) {
+                    const start = new Date(currentFormData.career.startDate);
+                    const end = new Date(currentFormData.career.endDate);
+                    const startStr = `${start.getFullYear()}.${String(start.getMonth() + 1).padStart(2, '0')}.${String(start.getDate()).padStart(2, '0')}`;
+                    const endStr = `${end.getFullYear()}.${String(end.getMonth() + 1).padStart(2, '0')}.${String(end.getDate()).padStart(2, '0')}`;
+                    periodStr = `${startStr} ~ ${endStr}`;
+                  }
                   careerData = [{
                     organization: currentFormData.career.organization,
-                    period: currentFormData.career.period && currentFormData.career.periodUnit 
-                      ? `${currentFormData.career.period}${currentFormData.career.periodUnit}` 
-                      : currentFormData.career.period,
+                    period: periodStr,
                     duties: currentFormData.career.duties,
                   }];
                 }
@@ -709,7 +723,7 @@ export default function ResumePage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1 print:text-xs">거주지</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1 print:text-xs">주소(사는 곳)</label>
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
@@ -750,7 +764,7 @@ export default function ResumePage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1 print:text-xs">이메일</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1 print:text-xs">이메일(선택)</label>
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"

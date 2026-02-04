@@ -55,15 +55,27 @@ export function TopNav() {
             면접 시뮬레이터
           </Link>
           <div className="flex items-center gap-2">
-            <Button
-              aria-label={screenReaderEnabled ? "화면설명 끄기" : "화면설명 켜기"}
-              variant="outline"
-              size="sm"
-              onClick={() => setScreenReaderEnabled(!screenReaderEnabled)}
-            >
-              {screenReaderEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              <span className="ml-2 hidden sm:inline">{screenReaderEnabled ? "화면설명 ON" : "화면설명 OFF"}</span>
-            </Button>
+            <div className="relative group">
+              <Button
+                aria-label={screenReaderEnabled ? "화면설명 끄기" : "화면설명 켜기"}
+                variant="outline"
+                size="sm"
+                onClick={() => setScreenReaderEnabled(!screenReaderEnabled)}
+                className={`${
+                  screenReaderEnabled 
+                    ? "bg-pink-50 border-pink-300 text-pink-700 hover:bg-pink-100" 
+                    : "bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100"
+                } font-medium shadow-sm`}
+              >
+                {screenReaderEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                <span className="ml-2 hidden sm:inline">{screenReaderEnabled ? "화면설명 ON" : "화면설명 OFF"}</span>
+              </Button>
+              {/* 커스텀 툴팁 - title 속성 제거로 중복 방지 */}
+              <div className="absolute right-0 top-full mt-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50">
+                현재 화면에 대한 설명을 음성으로 들을 수 있습니다
+                <div className="absolute -top-1 right-4 w-2 h-2 bg-slate-900 rotate-45"></div>
+              </div>
+            </div>
           </div>
         </div>
       </header>

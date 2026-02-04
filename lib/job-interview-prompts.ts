@@ -194,3 +194,4 @@ export const JOB_INTERVIEW_PROMPTS = {
 };
 
 export type JobId = keyof typeof JOB_INTERVIEW_PROMPTS;
+
